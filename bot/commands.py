@@ -18,6 +18,7 @@ owner_role_id = 1054537575592902816
 member_role_id = 1054538517562277959
 ticket_archive_channel_id = 1054559991547301999
 pastebin_api_key = 'oMdNCtLHo-zzWyGyZo-pxoAsDfACiDWG'
+main_guild = 1054537386584985702
 
 # Fetch all string values in tickets_sql and decode them into Ticket objects.
 for key, value in tickets_sql.items():
@@ -57,6 +58,52 @@ class ArchivedTicket:
     channel: int
     creation_time: str
     archive: dict = None
+
+
+async def suggest(client: GatewayBot, event: GuildMessageCreateEvent):
+    if event.is_bot or not event.content:
+        return
+
+    role_id = event.member.role_ids
+
+    suggestion_array = event.content.split(' ', 1)
+    if len(suggestion_array) < 2:
+        embed = Embed(
+            title='**Invalid Arguments**',
+            description='You must provide a suggestion.',
+            color=0xff0000
+        )
+        await event.message.respond(embed=embed)
+        return
+
+    suggestion = suggestion_array[1]
+
+    embed = Embed(
+        title='**Suggestion**',
+        description=f'{suggestion}',
+        color=0x00ff00
+    )
+    embed.add_field('Suggested by', f'<@{event.member.id}>', inline=False)
+    embed.add_field('Suggested in', f'<#{event.channel_id}>', inline=True)
+    message = await client.rest.create_message(1054816621866258462, embed=embed)
+
+    # Add :arrow_up_small: and :arrow_down_small: reactions to the message.
+    await asyncio.sleep(0.1)
+    await client.rest.add_reaction(channel=message.channel_id, message=message, emoji='🔼')
+    await asyncio.sleep(0.1)
+    await client.rest.add_reaction(channel=message.channel_id, message=message, emoji='🔽')
+
+    global main_guild
+    discord_message_url = f'https://discord.com/channels/{main_guild}/{message.channel_id}/{message.id}'
+
+    # Make it into an embed
+    embed = Embed(
+        title='**Suggestion created!**',
+        description=f'Your suggestion has been sent in the <#1054816621866258462> channel\nYou can view your suggestion here: [Click to view your suggestion]({discord_message_url})',
+        color=0x00ff00
+    )
+    # Send it to the suggestions channel
+    await client.rest.create_message(event.channel_id, embed=embed)
 
 
 async def chat_listener(client: GatewayBot, event: GuildMessageCreateEvent):
