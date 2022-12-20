@@ -4,6 +4,7 @@ from hikari import GatewayBot, GuildChannel, GuildMessageCreateEvent, Embed, Emb
 from sqlitedict import SqliteDict
 from jsonpickle import encode, decode
 from dataclasses import dataclass
+import pastebinpy as pbp
 import time
 
 tickets_sql = SqliteDict('tickets.db', autocommit=True)
@@ -16,6 +17,7 @@ staff_team_role_id = 1054537894410321970
 owner_role_id = 1054537575592902816
 member_role_id = 1054538517562277959
 ticket_archive_channel_id = 1054559991547301999
+pastebin_api_key = 'oMdNCtLHo-zzWyGyZo-pxoAsDfACiDWG'
 
 # Fetch all string values in tickets_sql and decode them into Ticket objects.
 for key, value in tickets_sql.items():
@@ -242,6 +244,24 @@ async def ticket_close(client: GatewayBot, event: GuildMessageCreateEvent):
         archive=ticket.archive
     )
 
+    ticket_messages_long_string = ''
+    for message in archived_ticket.archive.values():
+        ticket_messages_long_string += f'[{message.timestamp}] {message.author} ({message.author_id}): {message.content}\n'
+
+    # All that's needed for a successful response
+    url = pbp.paste(pastebin_api_key, ticket_messages_long_string, "Ticket Archive")
+
+    # Send message to archive channel containing the URL.
+    embed = Embed(
+        title='**Ticket Archive**',
+        description=f'Ticket #{archived_ticket.id} has been archived.\n\n{url}',
+        color=0x00ff00
+    )
+    await client.rest.create_message(
+        channel=ticket_archive_channel_id,
+        embed=embed
+    )
+
     # Delete the ticket from the tickets dict.
     del tickets[event.channel_id]
 
@@ -310,8 +330,6 @@ async def ticket_archive(client: GatewayBot, event: GuildMessageCreateEvent):
         )
         await event.message.respond(embed=embed)
         return
-
-    # If there are tickets belonging to the user, it will send an embed with a list of tickets.
 
     embed = Embed(
         title='**Tickets Found**',
