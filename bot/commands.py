@@ -1,6 +1,7 @@
 import asyncio
 
-from hikari import GatewayBot, GuildChannel, GuildMessageCreateEvent, Embed, EmbedField, PermissionOverwriteType, Permissions, PermissionOverwrite, Snowflake
+from hikari import GatewayBot, GuildChannel, GuildMessageCreateEvent, Embed, EmbedField, PermissionOverwriteType, \
+    Permissions, PermissionOverwrite, Snowflake
 from sqlitedict import SqliteDict
 from jsonpickle import encode, decode
 from dataclasses import dataclass
@@ -19,16 +20,16 @@ member_role_id = 1054538517562277959
 ticket_archive_channel_id = 1054559991547301999
 pastebin_api_key = 'oMdNCtLHo-zzWyGyZo-pxoAsDfACiDWG'
 main_guild = 1054537386584985702
+waiting_on_message = []
+selected_channel = {}
 
 # Fetch all string values in tickets_sql and decode them into Ticket objects.
 for key, value in tickets_sql.items():
     tickets[key] = decode(value.encode('utf-8'))
 
-
 # Fetch all string values in archived_tickets_sql and decode them into Ticket objects.
 for key, value in archived_tickets_sql.items():
     archived_tickets[key] = decode(value.encode('utf-8'))
-
 
 if values_sql.__contains__('ticket_counter'):
     ticket_counter = values_sql['ticket_counter']
@@ -104,6 +105,59 @@ async def suggest(client: GatewayBot, event: GuildMessageCreateEvent):
     )
     # Send it to the suggestions channel
     await client.rest.create_message(event.channel_id, embed=embed)
+
+
+async def announcement_listener(client: GatewayBot, event: GuildMessageCreateEvent):
+    if event.is_bot or not event.content:
+        return
+
+    role_id = event.member.role_ids
+
+    if event.content.startswith('!announce'):
+        if not staff_team_role_id in role_id or not owner_role_id in role_id:
+            embed = Embed(
+                title='**You do not have permission!**',
+                description='You do not have permission to use this command.',
+                color=0xff0000
+            )
+            await event.message.respond(embed=embed)
+            return
+
+    if not selected_channel.__contains__(event.member.id) and event.member.id in waiting_on_message:
+        message = event.content
+        if not message.isdigit():
+            embed = Embed(
+                title='**Invalid Arguments**',
+                description='You must provide a valid channel ID.',
+                color=0xff0000
+            )
+            await event.message.respond(embed=embed)
+            return
+
+        selected_channel[event.member.id] = int(message)
+        embed = Embed(
+            title='**Channel Selected**',
+            description=f'You have selected <#{message}> as the announcement channel.\nPlease send the announcement message in this channel.',
+            color=0x00ff00
+        )
+        await event.message.respond(embed=embed)
+        return
+
+    # Get the member's profile picture URL and username
+    profile_picture_url = event.member.avatar_url
+    username = event.member.username
+
+    if event.member.id in waiting_on_message:
+        embed = Embed(
+            title='**Announcement**',
+            description=f'{event.content}',
+            color=0x00ff00
+        )
+        embed.set_author(name=username, url="https://www.minecaverns.com/", icon=profile_picture_url)
+        message = await client.rest.create_message(selected_channel[event.member.id], embed=embed)
+        del selected_channel[event.member.id]
+        await event.message.respond('Announcement sent!')
+        waiting_on_message.remove(event.member.id)
 
 
 async def chat_listener(client: GatewayBot, event: GuildMessageCreateEvent):
@@ -392,4 +446,29 @@ async def ticket_archive(client: GatewayBot, event: GuildMessageCreateEvent):
             inline=False
         )
 
+    await event.message.respond(embed=embed)
+
+
+async def announce(client: GatewayBot, event: GuildMessageCreateEvent):
+    if event.is_bot or not event.content:
+        return
+
+    role_id = event.member.role_ids
+
+    if not staff_team_role_id in role_id or not owner_role_id in role_id:
+        embed = Embed(
+            title='**You do not have permission!**',
+            description='You do not have permission to use this command.',
+            color=0xff0000
+        )
+        await event.message.respond(embed=embed)
+        return
+
+    waiting_on_message.append(event.member.id)
+
+    embed = Embed(
+        title='**Announcement**',
+        description='Please send the channel ID you''d like to post the message in.',
+        color=0x00ff00
+    )
     await event.message.respond(embed=embed)
