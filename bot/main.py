@@ -4,24 +4,13 @@ import time
 from sqlitedict import SqliteDict
 from dataclasses import dataclass
 import asyncio
+from jsonpickle import encode, decode
+from commands import ping, ticket_create, ticket_close, values_sql, ticket_counter
 
 # Data Setup
-staff_team_role_id = 1054537894410321970
-owner_role_id = 1054537575592902816
-member_role_id = 1054538517562277959
-ticket_archive_channel_id = 1054559991547301999
 sql = SqliteDict('data.db', autocommit=True)
 token = 'MTA1NDU1MDEzMjk4Njc1NzIyMA.G5UOT4.uMaFRBHRkxfp7YywO9c1UVNHbyiNpOxiEeisfg'
 client = GatewayBot(token, intents=Intents.ALL)
-
-
-@dataclass(frozen=True)
-class Ticket:
-    id: int
-    owner: int
-    channel: int
-    creation_time: str
-    archive: dict = None
 
 
 # Define some Hikari events and listen for messages.
@@ -30,20 +19,22 @@ async def on_message_create(event: GuildMessageCreateEvent):
     if event.is_bot or not event.content:
         return
 
-    role_id = event.member.role_ids
+    content = event.content
 
-    if event.content == '!ping':
-        if not staff_team_role_id in role_id or not owner_role_id in role_id:
-            embed = Embed(
-                title='**You do not have permission!**',
-                description='You do not have permission to use this command.',
-                color=0xff0000
-            )
-            await event.message.respond(embed=embed)
-            return
+    if content == '!ping':
+        await ping(client=client, event=event)
 
-        await event.message.respond('Pong!')
+    if content == '!ticket create':
+        await ticket_create(client=client, event=event)
+
+    if content == '!ticket close':
+        await ticket_close(client=client, event=event)
 
 # Bot Setup
 if __name__ == '__main__':
+
+    # Create an example Ticket object and pickle it, print it, then unpickle it and print it again.
+    if values_sql.__contains__('ticket_counter'):
+        ticket_counter = values_sql['ticket_counter']
+
     client.run()
