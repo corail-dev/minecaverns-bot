@@ -5,7 +5,7 @@ from sqlitedict import SqliteDict
 from dataclasses import dataclass
 import asyncio
 from jsonpickle import encode, decode
-from commands import ping, ticket_create, ticket_close, values_sql, ticket_counter
+from commands import ping, ticket_create, ticket_close, ticket_archive, chat_listener, values_sql, ticket_counter
 
 # Data Setup
 sql = SqliteDict('data.db', autocommit=True)
@@ -21,6 +21,8 @@ async def on_message_create(event: GuildMessageCreateEvent):
 
     content = event.content
 
+    await chat_listener(client, event)
+
     if content == '!ping':
         await ping(client=client, event=event)
 
@@ -29,6 +31,9 @@ async def on_message_create(event: GuildMessageCreateEvent):
 
     if content == '!ticket close':
         await ticket_close(client=client, event=event)
+
+    if content.startswith('!ticket archive'):
+        await ticket_archive(client=client, event=event)
 
 # Bot Setup
 if __name__ == '__main__':
