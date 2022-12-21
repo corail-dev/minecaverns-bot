@@ -5,7 +5,7 @@ from sqlitedict import SqliteDict
 from dataclasses import dataclass
 import asyncio
 from jsonpickle import encode, decode
-from commands import ping, ticket_create, ticket_close, ticket_archive, chat_listener, announcement_listener, announce, suggest, values_sql, ticket_counter
+from commands import ping, ticket_create, ticket_close, ticket_archive, chat_listener, announcement_listener, announce, suggest, captcha, values_sql, ticket_counter
 
 # Data Setup
 sql = SqliteDict('data.db', autocommit=True)
@@ -41,6 +41,9 @@ async def on_message_create(event: GuildMessageCreateEvent):
 
     if content == '!announce':
         await announce(client=client, event=event)
+
+    if content == '!captcha test':
+        await captcha(client=client, event=event)
 
 # Bot Setup
 if __name__ == '__main__':

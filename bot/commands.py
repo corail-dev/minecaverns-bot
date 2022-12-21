@@ -1,11 +1,12 @@
 import asyncio
 
 from hikari import GatewayBot, GuildChannel, GuildMessageCreateEvent, Embed, EmbedField, PermissionOverwriteType, \
-    Permissions, PermissionOverwrite, Snowflake
+    Permissions, PermissionOverwrite, Snowflake, File
 from sqlitedict import SqliteDict
 from jsonpickle import encode, decode
 from dataclasses import dataclass
 import pastebinpy as pbp
+import random
 import time
 
 tickets_sql = SqliteDict('tickets.db', autocommit=True)
@@ -59,6 +60,13 @@ class ArchivedTicket:
     channel: int
     creation_time: str
     archive: dict = None
+
+
+def generate_random_string(length: int):
+    # Generate a random string of a given length.
+    letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    result_str = ''.join(random.choice(letters) for i in range(length))
+    return result_str
 
 
 async def suggest(client: GatewayBot, event: GuildMessageCreateEvent):
@@ -472,3 +480,32 @@ async def announce(client: GatewayBot, event: GuildMessageCreateEvent):
         color=0x00ff00
     )
     await event.message.respond(embed=embed)
+
+
+from captcha.image import ImageCaptcha
+
+
+async def captcha(client: GatewayBot, event: GuildMessageCreateEvent):
+    if event.is_bot or not event.content:
+        return
+
+    role_id = event.member.role_ids
+
+    if not staff_team_role_id in role_id or not owner_role_id in role_id:
+        embed = Embed(
+            title='**You do not have permission!**',
+            description='You do not have permission to use this command.',
+            color=0xff0000
+        )
+        await event.message.respond(embed=embed)
+        return
+
+    # This function is a test function.
+    # Generate a random string with the above function.
+    # Generate an image in /images/captcha.png with the captcha.
+    random_string = generate_random_string(6)
+    image = ImageCaptcha()
+    data = image.generate(random_string)
+
+    # Respond with the image.
+    await event.message.respond(attachment=data)
